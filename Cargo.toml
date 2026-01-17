@@ -1,0 +1,18 @@
+[package]
+name = "propago"
+version = "0.1.0"
+edition = "2021"
+description = "Graph Neural Network primitives and training loops. The Learning Layer of the Scholar Stack."
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# Geometry Layer (hyperbolic primitives)
+hyp = { path = "../hyp", version = "0.1.0" }
+
+# Compute Backend
+candle-core = { workspace = true }
+candle-nn = { workspace = true }
+
+# Utils
+rand = "0.8"
+thiserror = { workspace = true }
