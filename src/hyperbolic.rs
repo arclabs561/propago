@@ -7,6 +7,7 @@ use hyp::PoincareBall;
 /// Operates entirely in the Poincaré ball to minimize distortion.
 pub struct HGCNConv {
     lin: Linear,
+    #[allow(dead_code)] // placeholder; exp/log-map not wired to Tensor yet
     manifold: PoincareBall<f64>,
 }
 

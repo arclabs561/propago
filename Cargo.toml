@@ -2,17 +2,22 @@
 name = "propago"
 version = "0.1.0"
 edition = "2021"
-description = "Graph Neural Network primitives and training loops. The Learning Layer of the Scholar Stack."
+description = "Graph Neural Network primitives and training loops"
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/arclabs561/propago"
+homepage = "https://github.com/arclabs561/propago"
+documentation = "https://docs.rs/propago"
+keywords = ["gnn", "graph", "neural-network"]
+categories = ["science", "algorithms"]
 
 [dependencies]
 # Geometry Layer (hyperbolic primitives)
-hyp = { path = "../hyp", version = "0.1.0" }
+hyp = { version = "0.1.0" }
 
 # Compute Backend
-candle-core = { workspace = true }
-candle-nn = { workspace = true }
+candle-core = "0.9"
+candle-nn = "0.9"
 
 # Utils
-rand = "0.8"
-thiserror = { workspace = true }
+rand = "0.9"
+thiserror = "2.0"

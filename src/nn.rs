@@ -17,6 +17,7 @@ impl GCNConv {
 
 /// Graph Attention Network Layer
 pub struct GATConv {
+    #[allow(dead_code)] // placeholder layer; forward path not wired yet
     lin: Linear,
     // att: Linear...
 }
