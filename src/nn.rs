@@ -1,4 +1,4 @@
-use candle_core::{Tensor, Result};
+use candle_core::{Result, Tensor};
 use candle_nn::{Linear, Module};
 
 /// Graph Convolutional Network Layer

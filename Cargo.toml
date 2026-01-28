@@ -10,14 +10,30 @@ documentation = "https://docs.rs/propago"
 keywords = ["gnn", "graph", "neural-network"]
 categories = ["science", "algorithms"]
 
-[dependencies]
-# Geometry Layer (hyperbolic primitives)
-hyp = { version = "0.1.0" }
+[features]
+# Keep Candle as the default backend for now (current public API).
+default = ["backend-candle"]
 
+backend-candle = []
+backend-burn = ["dep:burn", "dep:burn-ndarray"]
+backend-mlx = ["dep:mlx-rs", "mlx-rs/accelerate"]
+backend-mlx-cpu = ["backend-mlx"]
+backend-mlx-metal = ["dep:mlx-rs", "mlx-rs/accelerate", "mlx-rs/metal"]
+
+[dependencies]
 # Compute Backend
 candle-core = "0.9"
 candle-nn = "0.9"
 
+# Compute Backend (Burn, optional)
+burn = { version = "0.20.0", default-features = false, features = ["std"], optional = true }
+burn-ndarray = { version = "0.20.0", default-features = true, optional = true }
+mlx-rs = { version = "0.25.3", optional = true, default-features = false }
+
 # Utils
 rand = "0.9"
 thiserror = "2.0"
+
+[dev-dependencies]
+ndarray = "0.16"
+proptest = "1.5"
