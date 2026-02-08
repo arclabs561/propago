@@ -1,13 +1,18 @@
 //! propago: The Learning Layer.
 //!
-//! Provides Graph Neural Network layers (GCN, GAT, SAGE) and training loops
-//! built on `candle` tensors.
+//! Provides a small set of graph learning primitives built on `candle` tensors.
+//!
+//! Current public surface:
+//! - `GCNConv`: a simple graph convolution (linear + adjacency matmul)
+//! - `HGCNConv`: hyperbolic graph convolution on the Poincaré ball (Tensor-native ops)
+
+#![forbid(unsafe_code)]
 
 pub mod hyperbolic;
 pub mod nn;
 
 pub use hyperbolic::HGCNConv;
-pub use nn::{GATConv, GCNConv};
+pub use nn::GCNConv;
 
 #[cfg(feature = "backend-burn")]
 pub mod burn_hyperbolic;
