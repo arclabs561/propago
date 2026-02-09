@@ -48,7 +48,7 @@ Notes:
 ## Backends
 
 - **Candle (default)**: `--features backend-candle` (enabled by default).
-- **Burn (opt-in)**: `--features backend-burn` exposes Burn-tensor Poincaré ops (spec-tested vs `hyp`).
+- **Burn (opt-in)**: `--features backend-burn` exposes Burn-tensor Poincaré ops.
 - **MLX (opt-in)**: `--features backend-mlx` builds `mlx-rs` and requires `cmake` + Xcode MetalToolchain; tests force CPU for determinism.
 
 ## License

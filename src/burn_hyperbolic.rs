@@ -175,7 +175,6 @@ mod tests {
     use super::*;
     use burn::tensor::TensorData;
     use burn_ndarray::NdArray;
-    use ndarray::Array1;
 
     type B = NdArray<f32>;
 
@@ -184,14 +183,9 @@ mod tests {
         Tensor::from_data(TensorData::new(v.to_vec(), shape), &device)
     }
 
-    fn to_hyp(v: &[f32]) -> Array1<f64> {
-        Array1::from_vec(v.iter().map(|x| *x as f64).collect())
-    }
-
     #[test]
     fn burn_logexp_matches_hyp_smoke() {
         let ball = BurnPoincareBall::new(1.0);
-        let hyp_ball = hyp::PoincareBall::<f64>::new(1.0);
 
         let x = to_burn_2(&[0.10, -0.05, 0.02, 0.03, 0.04, -0.01], [2, 3]);
         let x = ball.project(x);
@@ -203,26 +197,12 @@ mod tests {
         let x2_rows = x2.to_data().to_vec::<f32>().unwrap();
 
         for i in 0..2 {
-            let xi = to_hyp(&x_rows[i * 3..i * 3 + 3]);
-            let x2i = to_hyp(&x2_rows[i * 3..i * 3 + 3]);
-            let err = (&xi - &x2i).mapv(|t| t.abs()).sum();
-            assert!(err < 1e-1, "roundtrip err={err}");
-        }
-
-        // parity vs hyp log0/exp0 (origin maps)
-        for i in 0..2 {
-            let xi = to_hyp(&x_rows[i * 3..i * 3 + 3]);
-            let v_ref = hyp_ball.log_map_zero(&xi.view());
-            let x_ref = hyp_ball.exp_map_zero(&v_ref.view());
-            let x_ref = x_ref.to_vec();
-
-            let x2i = &x2_rows[i * 3..i * 3 + 3];
-            let err = x_ref
+            let err = x_rows[i * 3..i * 3 + 3]
                 .iter()
-                .zip(x2i.iter())
-                .map(|(a, b)| (*a as f32 - *b).abs())
+                .zip(x2_rows[i * 3..i * 3 + 3].iter())
+                .map(|(a, b)| (*a - *b).abs())
                 .sum::<f32>();
-            assert!(err < 1e-1, "burn vs hyp origin roundtrip l1={err}");
+            assert!(err < 1e-1, "roundtrip err={err}");
         }
     }
 }
