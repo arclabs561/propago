@@ -38,9 +38,8 @@ The GCN layer multiplies node features by a symmetrically normalized
 adjacency matrix and a weight matrix, then applies a nonlinearity. It is a
 first-order truncation of spectral graph convolutions.
 
-ricci takes: `GCNConv` computes `adj @ linear(x)`. Burn's `Linear` includes a
-bias by default, so this is `adj @ (x @ W + b)`, not the paper's bias-free
-`adj @ x @ W` equation when the bias is nonzero.
+ricci takes: `GCNConv` computes `adj @ (x @ W) + b`. A separate legacy path
+retains the earlier `adj @ (x @ W + b)` behavior for existing models.
 
 ### Hyperbolic neural networks (Ganea, Becigneul, Hofmann, NeurIPS 2018)
 
@@ -119,10 +118,10 @@ decoder-only baseline by 29.8%. The paper flags its own weak point: fixed
 ricci takes: `RGCNConv` implements full and basis-decomposed relation
 transforms (block-diagonal is not implemented). Adjacencies are
 caller-normalized, and both directions of a relation enter as separate stack
-entries. Full mode applies a biased `Linear` before each adjacency, so each
-relation bias is also aggregated. Basis mode has no per-relation bias. Both
-modes add the biased self-loop transform. These bias semantics differ from
-the paper's displayed equation when a bias is nonzero.
+entries. Relation transforms are bias-free in both full and basis modes; both
+modes add a biased self-loop transform. Full mode retains its stored relation
+bias parameters so older records keep the same shape, and a legacy forward
+path reproduces their earlier adjacency-weighted contribution.
 
 ### Neural Bellman-Ford networks (Zhu, Zhang, Xhonneux, Tang, NeurIPS 2021)
 

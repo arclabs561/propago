@@ -56,12 +56,12 @@ where $\lambda_x^c = \frac{2}{1 - c\lVert x\rVert^2}$ is the conformal factor.
 ## API surface
 
 - `ricci::PoincareBall`: Poincare ball geometry (project, mobius_add, exp/log maps, distance, parallel transport).
-- `ricci::GCNConv`: graph convolution as `adj @ linear(x)`. Because Burn's
-  `Linear` includes a bias by default, the bias is aggregated by `adj` too.
+- `ricci::GCNConv`: graph convolution as `adj @ (x @ W) + b`, with a legacy
+  forward method for models that used adjacency-weighted bias.
 - `ricci::HGCNConv`: hyperbolic graph convolution on the Poincare ball.
-- `ricci::RGCNConv`: relational graph convolution over an adjacency stack.
-  Full mode applies a biased `Linear` per relation; basis mode has no
-  per-relation bias. Both modes add a biased self-loop transform.
+- `ricci::RGCNConv`: relational graph convolution over an adjacency stack,
+  with full or basis-decomposed bias-free relation transforms and a biased
+  self-loop transform.
 - `ricci::NBFConv`: conditional message passing (edge-type representations
   as forward inputs; indicator-initialized pair representations).
 - `ricci::relgraph`: the graph of relations (four interaction-type

@@ -7,11 +7,11 @@ use burn::tensor::{Distribution, IndexingUpdateOp, Int, Tensor};
 
 use crate::hyperbolic::PoincareBall;
 
-/// Graph Convolutional Network layer computing `adj @ linear(x)`.
+/// Graph Convolutional Network layer computing `adj @ (x @ W) + b`.
 ///
-/// Burn's [`Linear`] includes a bias by default, so the bias is aggregated by
-/// `adj`. With a nonzero bias this differs from the bias-free `adj @ x @ W`
-/// equation in Kipf and Welling (ICLR 2017).
+/// The bias is added once after adjacency aggregation, matching the usual GCN
+/// affine transform. [`forward_legacy`](Self::forward_legacy) retains the
+/// pre-0.10 behavior that aggregates the bias through `adj`.
 ///
 /// Derives [`Module`] so it can be embedded in a trainable model and optimized
 /// by a Burn optimizer (see `examples/cora_node_classification.rs`).
@@ -38,10 +38,26 @@ impl<B: Backend> GCNConv<B> {
         &self.linear
     }
 
-    /// Forward: `adj @ linear(x)`.
+    /// Forward: `adj @ (x @ W) + b`.
     pub fn forward(&self, x: Tensor<B, 2>, adj: Tensor<B, 2>) -> Tensor<B, 2> {
-        let x = self.linear.forward(x);
-        adj.matmul(x)
+        let projected = self.linear.forward(x);
+        match &self.linear.bias {
+            Some(bias) => {
+                let [d_out] = bias.val().dims();
+                let bias = bias.val().reshape([1, d_out]);
+                adj.matmul(projected - bias.clone()) + bias
+            }
+            None => adj.matmul(projected),
+        }
+    }
+
+    /// Pre-0.10 forward behavior: `adj @ linear(x)`.
+    ///
+    /// Use this only when loading a model whose outputs depend on adjacency-
+    /// weighted bias. The stored parameters are identical between the two
+    /// forward paths.
+    pub fn forward_legacy(&self, x: Tensor<B, 2>, adj: Tensor<B, 2>) -> Tensor<B, 2> {
+        adj.matmul(self.linear.forward(x))
     }
 }
 
@@ -234,11 +250,12 @@ impl<B: Backend> HGCNConv<B> {
 /// normalization can degrade on high-degree hub nodes; the choice is the
 /// caller's, encoded in the adjacencies.
 ///
-/// In full mode, each relation uses a biased [`Linear`] before adjacency
-/// aggregation: `Σ_r adj_r @ linear_r(x) + self_loop(x)`. Basis mode instead
-/// uses bias-free relation matrices: `Σ_r adj_r @ (x @ W_r) + self_loop(x)`.
-/// The self-loop [`Linear`] is biased in both modes. These bias semantics
-/// differ from the paper's displayed equation when a bias is nonzero.
+/// Relation transforms are bias-free during aggregation in both full and basis
+/// modes: `Σ_r adj_r @ (x @ W_r) + self_loop(x)`. Full mode retains bias
+/// parameters in its stored [`Linear`] records for compatibility, but the
+/// default forward does not apply them. [`forward_legacy`](Self::forward_legacy)
+/// retains the pre-0.10 biased full-mode behavior. The self-loop [`Linear`] is
+/// biased in both modes.
 ///
 /// [`with_bases`](Self::with_bases) shares the relation transforms through
 /// a basis (their Eq. 3: `W_r = Σ_b a_rb V_b`), keeping parameters
@@ -330,8 +347,7 @@ impl<B: Backend> RGCNConv<B> {
 
     /// Apply relation aggregation and the self-loop transform.
     ///
-    /// Full mode computes `Σ_r adjs[r] @ rel_linear_r(x) + self_loop(x)`;
-    /// basis mode computes `Σ_r adjs[r] @ (x @ W_r) + self_loop(x)`.
+    /// Both modes compute `Σ_r adjs[r] @ (x @ W_r) + self_loop(x)`.
     ///
     /// # Panics
     /// Panics if `adjs.len()` differs from [`num_relations`](Self::num_relations).
@@ -346,6 +362,37 @@ impl<B: Backend> RGCNConv<B> {
             let [nb, d_in, d_out] = basis.val().dims();
             let flat = basis.val().reshape([nb, d_in * d_out]);
             let ws = coef.val().matmul(flat); // [R, d_in * d_out]
+            for (r, adj) in adjs.iter().enumerate() {
+                let w = ws
+                    .clone()
+                    .slice([r..r + 1, 0..d_in * d_out])
+                    .reshape([d_in, d_out]);
+                out = out + adj.clone().matmul(x.clone().matmul(w));
+            }
+        } else {
+            for (lin, adj) in self.rel.iter().zip(adjs) {
+                out = out + adj.clone().matmul(x.clone().matmul(lin.weight.val()));
+            }
+        }
+        out
+    }
+
+    /// Pre-0.10 full-mode behavior with relation biases aggregated by each
+    /// adjacency.
+    ///
+    /// Basis mode has never had relation biases, so its legacy and default
+    /// outputs are identical. The stored parameters are unchanged.
+    pub fn forward_legacy(&self, x: Tensor<B, 2>, adjs: &[Tensor<B, 2>]) -> Tensor<B, 2> {
+        assert_eq!(
+            adjs.len(),
+            self.num_relations(),
+            "one adjacency per relation"
+        );
+        let mut out = self.self_loop.forward(x.clone());
+        if let (Some(basis), Some(coef)) = (&self.basis, &self.coef) {
+            let [nb, d_in, d_out] = basis.val().dims();
+            let flat = basis.val().reshape([nb, d_in * d_out]);
+            let ws = coef.val().matmul(flat);
             for (r, adj) in adjs.iter().enumerate() {
                 let w = ws
                     .clone()
@@ -484,6 +531,19 @@ mod tests {
         <B as Backend>::Device::default()
     }
 
+    fn fixed_linear(weight: f32, bias: f32) -> Linear<B> {
+        Linear {
+            weight: Param::initialized(
+                ParamId::new(),
+                Tensor::from_data(TensorData::new(vec![weight], [1, 1]), &dev()),
+            ),
+            bias: Some(Param::initialized(
+                ParamId::new(),
+                Tensor::from_data(TensorData::new(vec![bias], [1]), &dev()),
+            )),
+        }
+    }
+
     /// Swapping which adjacency carries which relation changes RGCN output
     /// (per-relation weights are real), while any relation-collapsing model
     /// is invariant to the swap by construction. The layer-level analogue
@@ -545,6 +605,79 @@ mod tests {
         assert_eq!(y.dims(), [n, d]);
         // Shared bases: 2 * d * d + coefficients 6 * 2 < full 6 * d * d.
         assert!(nb * d * d + r * nb < r * d * d);
+    }
+
+    #[test]
+    fn rgcn_full_matches_bias_free_relation_equation() {
+        let layer = RGCNConv {
+            rel: vec![fixed_linear(2.0, 3.0), fixed_linear(-1.0, 5.0)],
+            basis: None,
+            coef: None,
+            self_loop: fixed_linear(0.5, 7.0),
+        };
+        // Loading the generated Burn record keeps the pre-0.10 relation bias
+        // fields available to the legacy path without changing record shape.
+        let record = layer.clone().into_record();
+        let layer = layer.load_record(record);
+        let x = Tensor::from_data(TensorData::new(vec![2.0f32, 4.0], [2, 1]), &dev());
+        let a0 = Tensor::from_data(TensorData::new(vec![2.0f32, 0.0, 1.0, 1.0], [2, 2]), &dev());
+        let a1 = Tensor::from_data(TensorData::new(vec![0.0f32, 1.0, 3.0, 0.0], [2, 2]), &dev());
+
+        let corrected = layer
+            .forward(x.clone(), &[a0.clone(), a1.clone()])
+            .into_data()
+            .to_vec::<f32>()
+            .unwrap();
+        let legacy = layer
+            .forward_legacy(x, &[a0, a1])
+            .into_data()
+            .to_vec::<f32>()
+            .unwrap();
+
+        // corrected = A0 X W0 + A1 X W1 + (X Wself + bself)
+        assert_eq!(corrected, vec![12.0, 15.0]);
+        assert_eq!(legacy, vec![23.0, 36.0]);
+        assert_eq!(
+            legacy
+                .iter()
+                .zip(&corrected)
+                .map(|(old, new)| old - new)
+                .collect::<Vec<_>>(),
+            vec![11.0, 21.0],
+            "legacy delta is A0*b0 + A1*b1"
+        );
+    }
+
+    #[test]
+    fn rgcn_basis_is_bias_free_and_legacy_identical() {
+        let basis = Tensor::from_data(TensorData::new(vec![2.0f32, -1.0], [2, 1, 1]), &dev());
+        let coef = Tensor::from_data(
+            TensorData::new(vec![1.0f32, 0.5, -1.0, 2.0], [2, 2]),
+            &dev(),
+        );
+        let layer = RGCNConv {
+            rel: Vec::new(),
+            basis: Some(Param::initialized(ParamId::new(), basis)),
+            coef: Some(Param::initialized(ParamId::new(), coef)),
+            self_loop: fixed_linear(0.5, 7.0),
+        };
+        let x = Tensor::from_data(TensorData::new(vec![2.0f32, 4.0], [2, 1]), &dev());
+        let a0 = Tensor::from_data(TensorData::new(vec![2.0f32, 0.0, 1.0, 1.0], [2, 2]), &dev());
+        let a1 = Tensor::from_data(TensorData::new(vec![0.0f32, 1.0, 3.0, 0.0], [2, 2]), &dev());
+
+        let corrected = layer
+            .forward(x.clone(), &[a0.clone(), a1.clone()])
+            .into_data()
+            .to_vec::<f32>()
+            .unwrap();
+        let legacy = layer
+            .forward_legacy(x, &[a0, a1])
+            .into_data()
+            .to_vec::<f32>()
+            .unwrap();
+
+        assert_eq!(corrected, vec![-2.0, -6.0]);
+        assert_eq!(legacy, corrected);
     }
 
     /// Conditionality: with everything else fixed, moving the indicator to

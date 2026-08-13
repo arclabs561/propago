@@ -4,6 +4,9 @@
 
 ### Added
 
+- `GCNConv::forward_legacy` and `RGCNConv::forward_legacy` reproduce the
+  adjacency-weighted bias behavior of releases before 0.10.
+
 - `scatter::{scatter_max, scatter_min, scatter_max_min}`: exact segment
   max/min helpers over edge lists. These compute winner indices from a host
   snapshot, then use differentiable gathers so gradients route to the
@@ -23,6 +26,10 @@
   and NBFNet values are included as context, not as a controlled comparison.
 
 ### Fixed
+
+- `GCNConv` now adds its bias once after adjacency aggregation, and full-mode
+  `RGCNConv` no longer aggregates per-relation biases. Stored parameter shapes
+  are unchanged.
 
 - `examples/inductive_link_prediction`: match NBFNet's `remove_one_hop`
   protocol by sampling negative candidates before propagation and dropping
