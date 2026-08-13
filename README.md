@@ -70,6 +70,8 @@ where $\lambda_x^c = \frac{2}{1 - c\lVert x\rVert^2}$ is the conformal factor.
 - `ricci::scatter`: exact segment max/min helpers for edge-list aggregation.
 - `ricci::curvature`: approximate Ollivier-Ricci edge curvature over an
   adjacency matrix (lazy-walk `alpha`, entropic transport via Sinkhorn).
+  Values depend on the regularization and iteration cap; the solver does not
+  report a convergence certificate or compute exact Wasserstein distance.
 - `ricci::features`: homomorphism-count node features (walk and closed-walk
   profiles); these separate some graphs that 1-WL message passing cannot.
 
@@ -100,7 +102,7 @@ Each entry links to a mechanism-level summary in [docs/papers.md](docs/papers.md
 - Chami, Ying, Ré, Leskovec. Hyperbolic graph convolutional neural
   networks. NeurIPS 2019.
   [arXiv:1910.12933](https://arxiv.org/abs/1910.12933). `HGCNConv`. [notes](docs/papers.md#hyperbolic-graph-convolutional-neural-networks-chami-ying-re-leskovec-neurips-2019)
-- Cuturi. Sinkhorn distances: lightspeed computation of optimal
+- Cuturi. Sinkhorn distances: computation of regularized optimal
   transportation distances. NeurIPS 2013.
   [arXiv:1306.0895](https://arxiv.org/abs/1306.0895). The regularized transport
   approximation solved per edge. [notes](docs/papers.md#sinkhorn-distances-cuturi-neurips-2013)

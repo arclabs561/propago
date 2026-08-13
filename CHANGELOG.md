@@ -21,9 +21,10 @@
   margins, full-ranking recall@k / Hits@k, sampled-50 recall@k / Hits@k,
   sampled/full rank distributions, gold-vs-best-corrupt margins, propagation
   coverage, and mean state magnitude.
-- `examples/inductive_link_prediction` docs now include a WGPU PNA run with
-  0.817 sampled 50-negative Hits@10 on GraIL FB15k-237 v1. Published GraIL
-  and NBFNet values are included as context, not as a controlled comparison.
+- `examples/inductive_link_prediction` docs now include sampled-negative and
+  full-ranking diagnostics from one WGPU PNA run. The run is labeled as an
+  illustration rather than a benchmark, and published values are separated
+  from it as non-comparable context.
 
 ### Fixed
 

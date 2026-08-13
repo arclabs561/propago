@@ -1,7 +1,7 @@
 # ricci examples
 
-Each example is runnable from the repo root. Output excerpts below were
-captured from release runs.
+Each example is runnable from the repo root. Deterministic smoke-example output
+is shown verbatim. Training output is one recorded run and is not a benchmark.
 
 ## Which example should I run?
 
@@ -187,11 +187,13 @@ full-ranking filtered Hits@10: 0.517   MRR: 0.313
 published reference values: GraIL 0.642, NBFNet 0.834 (reported 50-negative protocol)
 ```
 
+This output is from one eight-epoch WGPU PNA run with `BATCH=64`; the random
+seed and hardware were not recorded as a benchmark protocol.
 The external evaluator reports sampled H@10 0.842, type-matched-negative H@10
-0.624, and all-entity H@10 0.517 for the same exported predictions.
+0.624, and all-entity H@10 0.517 for that exported prediction file.
 Full-ranking evaluates a different candidate set. The published values above
 come from their respective papers; differences in training, negative sampling,
-and evaluator details make them context rather than a controlled comparison.
+checkpoint selection, and evaluator details prevent a controlled comparison.
 
 ## Proof Sketches
 

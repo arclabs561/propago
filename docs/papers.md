@@ -9,28 +9,27 @@ Defines a curvature for any metric space carrying a random walk: put a
 probability measure `μ_x` around each point (here, one step of a walk from
 `x`), and set `κ(x, y) = 1 − W1(μ_x, μ_y) / d(x, y)`, where `W1` is the
 optimal-transport distance. Positive curvature means neighborhoods are
-closer together than their base points (sphere-like); zero is flat
-(grids); negative means neighborhoods spread apart faster than the points
-(trees, expanders). On manifolds this recovers classical Ricci curvature
-up to scaling.
+closer together than their base points; negative curvature means they spread
+farther apart. On manifolds the definition is related to classical Ricci
+curvature in an appropriate limiting regime.
 
 ricci takes: `curvature` uses this definition per edge, with the lazy-walk
 parameter `alpha` holding mass at the base node. Its transport term is an
-entropically regularized Sinkhorn approximation rather than exact `W1`.
+entropically regularized Sinkhorn estimate rather than exact `W1`. The result
+depends on the configured regularization and iteration cap, and the API does
+not return a residual or other convergence certificate.
 
 ### Understanding over-squashing and bottlenecks on graphs via curvature (Topping, Di Giovanni, Chamberlain, Dong, Bronstein, ICLR 2022)
 
 Formalizes oversquashing: information from exponentially many distant nodes
 must compress through fixed-width representations, and the layer-to-layer
 Jacobian bounds show the loss concentrates on edges that act as narrow
-bridges between dense neighborhoods. Those are precisely the negatively
-curved edges, and the paper's rewiring algorithm (stochastic discrete Ricci
-flow) adds support edges around the most negative ones to relieve the
-bottleneck.
+bridges between dense neighborhoods. The paper relates such bottlenecks to
+negative curvature and proposes a rewiring algorithm (stochastic discrete
+Ricci flow) that adds support edges around negatively curved ones.
 
-ricci takes: the diagnostic use. Compute edge curvature directly and read
-the most negative edges as bottleneck candidates, before reaching for
-rewiring or architecture changes.
+ricci takes: the diagnostic use. Compute edge curvature and treat the most
+negative edges as bottleneck candidates.
 
 ### Semi-supervised classification with graph convolutional networks (Kipf, Welling, ICLR 2017)
 
@@ -58,9 +57,8 @@ table is the paper's operation table.
 HGCN: run graph convolution in hyperbolic space by round-tripping through
 the tangent space. Log-map point features to the tangent plane, apply the
 linear transform and neighborhood aggregation there, exp-map back, and
-apply the activation in tangent space. Hierarchical graphs embed with far
-less distortion than in Euclidean space, and the gains track how tree-like
-the graph is.
+apply the activation in tangent space. The paper reports lower distortion than
+Euclidean baselines on its hierarchical graph experiments.
 
 ricci takes: the default `HGCNConv` path log-maps at the origin, applies a
 biased `Linear` followed by adjacency aggregation, and exp-maps at the origin.
@@ -70,22 +68,22 @@ not an equation-for-equation implementation of HGCN.
 
 ### Sinkhorn distances (Cuturi, NeurIPS 2013)
 
-Adding an entropy term to the optimal-transport objective makes it strictly
-convex and solvable by Sinkhorn's matrix-scaling iterations. The
-regularization strength trades approximation error against convergence and
-conditioning.
+Adding an entropy term to the optimal-transport objective permits Sinkhorn
+matrix-scaling iterations. The regularization strength trades fidelity to the
+unregularized objective against numerical conditioning.
 
 ricci takes: every edge's transport term in the curvature computation is
-approximated with log-domain Sinkhorn; `CurvatureConfig` exposes the
-regularization and iteration cap.
+estimated with log-domain Sinkhorn; `CurvatureConfig` exposes the
+regularization and iteration cap. Ricci uses the returned iterate directly and
+does not check a convergence tolerance, so results should be treated as
+configuration-dependent approximations.
 
 ### Lovasz meets Weisfeiler and Leman (Dell, Grohe, Rattan, ICALP 2018)
 
 Two graphs are indistinguishable by the k-dimensional Weisfeiler-Leman
 refinement (the hierarchy bounding message-passing expressiveness) iff they
 have equal homomorphism counts from every graph of treewidth at most k. For
-k = 1 that means trees: a 1-WL-bounded network literally cannot see any
-structure beyond tree counts. The standard blind spot: a 6-cycle and two
+k = 1 that means trees. One example blind spot is a 6-cycle and two
 disjoint triangles have identical tree homomorphism counts.
 
 ricci takes: the motivation for `features::hom_profile`, and the
@@ -93,11 +91,10 @@ C6-versus-two-triangles pair as the module's test oracle.
 
 ### Graph neural networks with local graph parameters (Barcelo, Geerts, Reutter, Ryschkov, NeurIPS 2021)
 
-Injecting homomorphism counts of small patterns as extra node features
-provably lifts message-passing expressiveness beyond 1-WL, at preprocessing
-cost only, and the paper characterizes which patterns add power. Cycle
-(closed-walk) counts are the cheapest useful family, since they carry
-exactly the information tree-bounded aggregation misses.
+The paper shows how homomorphism counts of selected small patterns can lift
+message-passing expressiveness beyond 1-WL when supplied as precomputed node
+features, and characterizes which patterns add power. This crate uses walk and
+closed-walk counts as a small computable feature family.
 
 ricci takes: `features` is this recipe, with walk and closed-walk profiles
 as the feature vectors.
@@ -149,8 +146,8 @@ paper's training and evaluation setup.
 
 ### Towards foundation models for knowledge graph reasoning (Galkin, Yuan, Mostafa, Tang, Zhu, ICLR 2024)
 
-ULTRA's observation: relation vocabularies do not transfer across KGs, but
-relation-to-relation INTERACTIONS do. Build a graph of relations —
+ULTRA represents relation vocabularies through relation-to-relation
+interactions. It builds a graph of relations —
 inverses included as nodes — with four structure-only interaction types
 (tail-to-head, head-to-head, head-to-tail, tail-to-tail); run conditional
 message passing over it with an all-ones indicator on the query relation
@@ -158,10 +155,9 @@ message passing over it with an all-ones indicator on the query relation
 update); the resulting relative relation representations feed an
 entity-level NBFNet as edge features. One 177k-parameter model pre-trained
 on three KGs zero-shot transfers to 50+ unseen KGs, on average beating
-supervised per-graph baselines (0.395 vs 0.344 MRR); ablations show the
-conditioning is load-bearing (unconditional encoding drops total-average
-MRR from 0.366 to 0.192).
+supervised per-graph baselines (0.395 vs 0.344 MRR). In the reported ablation,
+removing conditioning lowers total-average MRR from 0.366 to 0.192.
 
-ricci takes: `relgraph::relation_graph` builds exactly those four
+ricci takes: `relgraph::relation_graph` builds those four
 adjacencies (inverse relations as nodes), and `NBFConv` serves both stages
 because its edge representations are inputs, not parameters.
