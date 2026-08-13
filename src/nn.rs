@@ -7,7 +7,11 @@ use burn::tensor::{Distribution, IndexingUpdateOp, Int, Tensor};
 
 use crate::hyperbolic::PoincareBall;
 
-/// Graph Convolutional Network layer: `A_hat * X * W`.
+/// Graph Convolutional Network layer computing `adj @ linear(x)`.
+///
+/// Burn's [`Linear`] includes a bias by default, so the bias is aggregated by
+/// `adj`. With a nonzero bias this differs from the bias-free `adj @ x @ W`
+/// equation in Kipf and Welling (ICLR 2017).
 ///
 /// Derives [`Module`] so it can be embedded in a trainable model and optimized
 /// by a Burn optimizer (see `examples/cora_node_classification.rs`).
@@ -41,12 +45,16 @@ impl<B: Backend> GCNConv<B> {
     }
 }
 
-/// Hyperbolic Graph Convolutional Network layer (H2H-GCN).
+/// Hyperbolic graph-convolution layer using Poincare tangent-space operations.
 ///
-/// Operates entirely in the Poincare ball to minimize distortion:
+/// The default forward path:
 /// 1. Map to tangent space (log map)
-/// 2. Euclidean message passing (linear + adjacency matmul)
+/// 2. Apply a biased [`Linear`], then adjacency aggregation
 /// 3. Map back to ball (exp map)
+///
+/// The bias is aggregated by the adjacency. This follows the broad
+/// tangent-space construction used by Chami et al. (NeurIPS 2019), but is not
+/// an equation-for-equation implementation of that architecture.
 ///
 /// # Example
 ///
@@ -119,7 +127,7 @@ impl<B: Backend> HGCNConv<B> {
 
     /// Forward pass with activation applied in tangent space (Chami et al. 2019).
     ///
-    /// Full HGCN pattern: linear -> aggregate -> activate.
+    /// This layer's sequence is linear -> aggregate -> activate.
     /// Activation is applied via log0 -> act -> exp0 after aggregation.
     /// `ball_out` allows per-layer curvature change; pass `self.ball()` for same curvature.
     pub fn forward_act<F>(
@@ -214,8 +222,7 @@ impl<B: Backend> HGCNConv<B> {
     }
 }
 
-/// Relational Graph Convolutional Network layer (R-GCN):
-/// `Σ_r A_hat_r X W_r + X W_self` (Schlichtkrull et al., ESWC 2018, Eq. 2).
+/// Relational Graph Convolutional Network layer (R-GCN).
 ///
 /// One node set, many relations: each relation type gets its own learned
 /// transform applied through its own (pre-normalized, as with [`GCNConv`])
@@ -226,6 +233,12 @@ impl<B: Backend> HGCNConv<B> {
 /// shared across-relation constant for link prediction, and notes fixed
 /// normalization can degrade on high-degree hub nodes; the choice is the
 /// caller's, encoded in the adjacencies.
+///
+/// In full mode, each relation uses a biased [`Linear`] before adjacency
+/// aggregation: `Σ_r adj_r @ linear_r(x) + self_loop(x)`. Basis mode instead
+/// uses bias-free relation matrices: `Σ_r adj_r @ (x @ W_r) + self_loop(x)`.
+/// The self-loop [`Linear`] is biased in both modes. These bias semantics
+/// differ from the paper's displayed equation when a bias is nonzero.
 ///
 /// [`with_bases`](Self::with_bases) shares the relation transforms through
 /// a basis (their Eq. 3: `W_r = Σ_b a_rb V_b`), keeping parameters
@@ -315,7 +328,10 @@ impl<B: Backend> RGCNConv<B> {
         }
     }
 
-    /// Forward: `Σ_r adjs[r] @ (x @ W_r) + self_loop(x)`.
+    /// Apply relation aggregation and the self-loop transform.
+    ///
+    /// Full mode computes `Σ_r adjs[r] @ rel_linear_r(x) + self_loop(x)`;
+    /// basis mode computes `Σ_r adjs[r] @ (x @ W_r) + self_loop(x)`.
     ///
     /// # Panics
     /// Panics if `adjs.len()` differs from [`num_relations`](Self::num_relations).

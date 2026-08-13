@@ -14,8 +14,9 @@ closer together than their base points (sphere-like); zero is flat
 (trees, expanders). On manifolds this recovers classical Ricci curvature
 up to scaling.
 
-ricci takes: this is the exact quantity `curvature` computes per edge, with
-the lazy-walk parameter `alpha` holding mass at the base node.
+ricci takes: `curvature` uses this definition per edge, with the lazy-walk
+parameter `alpha` holding mass at the base node. Its transport term is an
+entropically regularized Sinkhorn approximation rather than exact `W1`.
 
 ### Understanding over-squashing and bottlenecks on graphs via curvature (Topping, Di Giovanni, Chamberlain, Dong, Bronstein, ICLR 2022)
 
@@ -33,12 +34,13 @@ rewiring or architecture changes.
 
 ### Semi-supervised classification with graph convolutional networks (Kipf, Welling, ICLR 2017)
 
-The GCN layer: multiply node features by a symmetrically normalized
-adjacency matrix, then by a weight matrix, then apply a nonlinearity. It is
-a first-order truncation of spectral graph convolutions, and its simplicity
-is what made graph neural networks a practical default.
+The GCN layer multiplies node features by a symmetrically normalized
+adjacency matrix and a weight matrix, then applies a nonlinearity. It is a
+first-order truncation of spectral graph convolutions.
 
-ricci takes: `GCNConv` is this layer.
+ricci takes: `GCNConv` computes `adj @ linear(x)`. Burn's `Linear` includes a
+bias by default, so this is `adj @ (x @ W + b)`, not the paper's bias-free
+`adj @ x @ W` equation when the bias is nonzero.
 
 ### Hyperbolic neural networks (Ganea, Becigneul, Hofmann, NeurIPS 2018)
 
@@ -61,19 +63,22 @@ apply the activation in tangent space. Hierarchical graphs embed with far
 less distortion than in Euclidean space, and the gains track how tree-like
 the graph is.
 
-ricci takes: `HGCNConv` implements the tangent-space recipe on the Poincare
-ball at fixed curvature.
+ricci takes: the default `HGCNConv` path log-maps at the origin, applies a
+biased `Linear` followed by adjacency aggregation, and exp-maps at the origin.
+The bias is therefore aggregated by the adjacency. Other methods accept an
+explicit basepoint or output curvature. This is a related tangent-space layer,
+not an equation-for-equation implementation of HGCN.
 
 ### Sinkhorn distances (Cuturi, NeurIPS 2013)
 
 Adding an entropy term to the optimal-transport objective makes it strictly
-convex and solvable by Sinkhorn's matrix-scaling iterations, orders of
-magnitude faster than exact linear-programming solvers. The regularization
-strength trades accuracy against speed and conditioning.
+convex and solvable by Sinkhorn's matrix-scaling iterations. The
+regularization strength trades approximation error against convergence and
+conditioning.
 
-ricci takes: every edge's `W1` in the curvature computation is solved with
-log-domain Sinkhorn; `CurvatureConfig` exposes the regularization and the
-iteration cap.
+ricci takes: every edge's transport term in the curvature computation is
+approximated with log-domain Sinkhorn; `CurvatureConfig` exposes the
+regularization and iteration cap.
 
 ### Lovasz meets Weisfeiler and Leman (Dell, Grohe, Rattan, ICALP 2018)
 
@@ -111,10 +116,13 @@ variant won, and an R-GCN encoder under a DistMult decoder beat the
 decoder-only baseline by 29.8%. The paper flags its own weak point: fixed
 `1/c` normalization degrades on high-degree hub nodes.
 
-ricci takes: `RGCNConv` is the layer with the basis decomposition
-implemented (block-diagonal is not); adjacencies are caller-normalized as
-with `GCNConv`, and both directions of a relation enter as separate stack
-entries, per the paper's convention.
+ricci takes: `RGCNConv` implements full and basis-decomposed relation
+transforms (block-diagonal is not implemented). Adjacencies are
+caller-normalized, and both directions of a relation enter as separate stack
+entries. Full mode applies a biased `Linear` before each adjacency, so each
+relation bias is also aggregated. Basis mode has no per-relation bias. Both
+modes add the biased self-loop transform. These bias semantics differ from
+the paper's displayed equation when a bias is nonzero.
 
 ### Neural Bellman-Ford networks (Zhu, Zhang, Xhonneux, Tang, NeurIPS 2021)
 
@@ -134,11 +142,11 @@ complex logical queries.
 
 ricci takes: `NBFConv` is one iteration of the neuralized Bellman-Ford
 update, with edge-type representations as forward-time inputs and the
-boundary condition re-added each layer. The semiring instances the paper
-generalizes are the same algebra family heyting evaluates exactly. The
-`inductive_link_prediction` example trains an NBFNet-shaped model on the
-GraIL FB15k-237 v1 inductive split end to end (see examples/README.md for
-the measured numbers, including exact-PNA mode, vs the paper's 0.834).
+boundary condition re-added each layer. The `inductive_link_prediction`
+example trains an NBFNet-shaped model on the GraIL FB15k-237 v1 inductive
+split end to end. The measured numbers in examples/README.md include
+sampled-negative diagnostics; they are not a controlled reproduction of the
+paper's training and evaluation setup.
 
 ### Towards foundation models for knowledge graph reasoning (Galkin, Yuan, Mostafa, Tang, Zhu, ICLR 2024)
 

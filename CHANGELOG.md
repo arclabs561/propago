@@ -18,9 +18,9 @@
   margins, full-ranking recall@k / Hits@k, sampled-50 recall@k / Hits@k,
   sampled/full rank distributions, gold-vs-best-corrupt margins, propagation
   coverage, and mean state magnitude.
-- `examples/inductive_link_prediction` docs now include the strict WGPU PNA
-  run: 0.817 50-negative Hits@10 on GraIL FB15k-237 v1, close to NBFNet's
-  0.834 and above GraIL's 0.642 on the same sampled protocol.
+- `examples/inductive_link_prediction` docs now include a WGPU PNA run with
+  0.817 sampled 50-negative Hits@10 on GraIL FB15k-237 v1. Published GraIL
+  and NBFNet values are included as context, not as a controlled comparison.
 
 ### Fixed
 
@@ -40,8 +40,8 @@
   (hundreds) feasible. Parity test pins it to the dense path.
 - `examples/inductive_link_prediction`: NBFNet-shaped inductive link
   prediction on the GraIL FB15k-237 v1 split, trained on one graph and
-  evaluated on a disjoint entity vocabulary, with honest numbers against
-  the published references and provenance for every protocol choice.
+  evaluated on a disjoint entity vocabulary, with measured sampled-negative
+  and full-ranking diagnostics.
 
 ## [0.8.0] - 2026-07-05
 
@@ -102,9 +102,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `curvature` module: Ollivier-Ricci edge curvature
+- `curvature` module: approximate Ollivier-Ricci edge curvature
   (`ollivier_ricci_curvatures`) with lazy random-walk `alpha` and entropic
-  `W1` via Sinkhorn. Composes `lapl` (transition measures), `graphops`
+  transport via Sinkhorn. Composes `lapl` (transition measures), `graphops`
   (hop distances), and `wass` (transport); these are new dependencies,
   and `ndarray` moved from dev-dependency to dependency.
 

@@ -56,18 +56,20 @@ where $\lambda_x^c = \frac{2}{1 - c\lVert x\rVert^2}$ is the conformal factor.
 ## API surface
 
 - `ricci::PoincareBall`: Poincare ball geometry (project, mobius_add, exp/log maps, distance, parallel transport).
-- `ricci::GCNConv`: graph convolution (linear projection + adjacency matmul).
+- `ricci::GCNConv`: graph convolution as `adj @ linear(x)`. Because Burn's
+  `Linear` includes a bias by default, the bias is aggregated by `adj` too.
 - `ricci::HGCNConv`: hyperbolic graph convolution on the Poincare ball.
-- `ricci::RGCNConv`: relational graph convolution (per-relation transforms
-  over an adjacency stack, optional basis decomposition) for typed graphs.
+- `ricci::RGCNConv`: relational graph convolution over an adjacency stack.
+  Full mode applies a biased `Linear` per relation; basis mode has no
+  per-relation bias. Both modes add a biased self-loop transform.
 - `ricci::NBFConv`: conditional message passing (edge-type representations
   as forward inputs; indicator-initialized pair representations).
 - `ricci::relgraph`: the graph of relations (four interaction-type
   adjacencies over relation nodes, inverses included).
   All conv layers derive Burn's `Module`, so they embed in trainable models.
 - `ricci::scatter`: exact segment max/min helpers for edge-list aggregation.
-- `ricci::curvature`: Ollivier-Ricci edge curvature over an adjacency matrix
-  (lazy-walk `alpha`, entropic `W1`).
+- `ricci::curvature`: approximate Ollivier-Ricci edge curvature over an
+  adjacency matrix (lazy-walk `alpha`, entropic transport via Sinkhorn).
 - `ricci::features`: homomorphism-count node features (walk and closed-walk
   profiles); these separate some graphs that 1-WL message passing cannot.
 
@@ -83,7 +85,8 @@ captured output.
 Each entry links to a mechanism-level summary in [docs/papers.md](docs/papers.md).
 
 - Ollivier. Ricci curvature of Markov chains on metric spaces. Journal of
-  Functional Analysis 256(3), 2009. The edge curvature computed here. [notes](docs/papers.md#ricci-curvature-of-markov-chains-on-metric-spaces-ollivier-2009)
+  Functional Analysis 256(3), 2009. The definition approximated here using
+  entropic transport. [notes](docs/papers.md#ricci-curvature-of-markov-chains-on-metric-spaces-ollivier-2009)
 - Topping, Di Giovanni, Chamberlain, Dong, Bronstein. Understanding
   over-squashing and bottlenecks on graphs via curvature. ICLR 2022.
   [arXiv:2111.14522](https://arxiv.org/abs/2111.14522). Negative curvature
@@ -99,8 +102,8 @@ Each entry links to a mechanism-level summary in [docs/papers.md](docs/papers.md
   [arXiv:1910.12933](https://arxiv.org/abs/1910.12933). `HGCNConv`. [notes](docs/papers.md#hyperbolic-graph-convolutional-neural-networks-chami-ying-re-leskovec-neurips-2019)
 - Cuturi. Sinkhorn distances: lightspeed computation of optimal
   transportation distances. NeurIPS 2013.
-  [arXiv:1306.0895](https://arxiv.org/abs/1306.0895). The entropic `W1`
-  solved per edge. [notes](docs/papers.md#sinkhorn-distances-cuturi-neurips-2013)
+  [arXiv:1306.0895](https://arxiv.org/abs/1306.0895). The regularized transport
+  approximation solved per edge. [notes](docs/papers.md#sinkhorn-distances-cuturi-neurips-2013)
 - Dell, Grohe, Rattan. Lovász meets Weisfeiler and Leman. ICALP 2018.
   [arXiv:1802.08876](https://arxiv.org/abs/1802.08876). Homomorphism counts
   as an expressiveness measure. [notes](docs/papers.md#lovasz-meets-weisfeiler-and-leman-dell-grohe-rattan-icalp-2018)

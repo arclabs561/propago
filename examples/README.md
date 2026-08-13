@@ -1,6 +1,6 @@
 # ricci examples
 
-Each example is runnable from the repo root. Output excerpts below are real,
+Each example is runnable from the repo root. Output excerpts below were
 captured from release runs.
 
 ## Which example should I run?
@@ -86,15 +86,14 @@ edge-list forward on the GraIL FB15k-237 v1 split, then evaluates on a
 disjoint graph whose entities were never seen in training. Nothing
 entity-specific is learned, so the trained model runs unchanged on the new
 vocabulary. Data-gated: fetch first, then run. Default sum aggregation uses
-TorchDrug-style sample weights and takes about 35 minutes on CPU; exact PNA
-mode is slower.
+TorchDrug-style sample weights. PNA performs additional aggregation work.
 
 ```bash
 scripts/fetch_grail_fb237v1.sh
 cargo run --release --example inductive_link_prediction
 ```
 
-Use WGPU where available:
+Use the WGPU backend:
 
 ```bash
 cargo run --release --features wgpu --example inductive_link_prediction
@@ -185,12 +184,14 @@ score margin gold-best-corrupt: mean -0.962  p10 -2.538  median -0.877; eval cov
 fb237_v1 -> fb237_v1_ind (both directions, n = 410):
 Hits@10 (50 filtered negatives, GraIL protocol): 0.854
 full-ranking filtered Hits@10: 0.517   MRR: 0.313
-references on this split: GraIL 0.642, NBFNet 0.834 (50-neg protocol)
+published reference values: GraIL 0.642, NBFNet 0.834 (reported 50-negative protocol)
 ```
 
 The external evaluator reports sampled H@10 0.842, type-matched-negative H@10
 0.624, and all-entity H@10 0.517 for the same exported predictions.
-Full-ranking is the stricter diagnostic.
+Full-ranking evaluates a different candidate set. The published values above
+come from their respective papers; differences in training, negative sampling,
+and evaluator details make them context rather than a controlled comparison.
 
 ## Proof Sketches
 
