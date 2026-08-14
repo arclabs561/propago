@@ -1,16 +1,16 @@
-//! Homomorphism-count node features: provable expressiveness beyond 1-WL.
+//! Walk and closed-walk node features motivated by homomorphism counts.
 //!
-//! Message passing distinguishes nodes only up to color refinement, which by
-//! Dell, Grohe & Rattan (ICALP 2018) equals homomorphism counts from *trees*
-//! — so a GCN provably cannot count cycles. Injecting rooted closed-walk
-//! counts (cycle homomorphism counts, treewidth 2) as input features lifts
-//! that ceiling interpretably (Barceló et al., NeurIPS 2021; Jin et al.,
-//! ICML 2024): the feature IS a named graph quantity, not a learned blob.
+//! Standard message-passing GNNs are bounded by 1-WL in common settings.
+//! Homomorphism counts from selected non-tree patterns can distinguish some
+//! graphs that 1-WL cannot (Dell, Grohe & Rattan, ICALP 2018; Barceló et al.,
+//! NeurIPS 2021). Rooted closed-walk counts provide a small computable feature
+//! family with that behavior on examples such as a 6-cycle versus two disjoint
+//! triangles.
 //!
 //! [`hom_profile`] assembles the two tractable rooted families from
-//! `graphops` — walk counts (path homomorphisms) and closed-walk counts
-//! (cycle homomorphisms at lengths 3 and 4) — as a feature matrix ready to
-//! feed (or concatenate into) [`crate::GCNConv`] inputs. Counts grow with
+//! `graphops` — walk counts and closed-walk counts at lengths 3 and 4 — as a
+//! feature matrix ready to feed (or concatenate into) [`crate::GCNConv`]
+//! inputs. Counts grow with
 //! graph size; consider `ln(1 + x)` normalization before training.
 
 use graphops::{closed_walk_counts, walk_counts, Graph};

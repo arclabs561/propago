@@ -125,8 +125,9 @@ impl GraphRef for NeighborLists {
 /// Cost is roughly one BFS per node plus one Sinkhorn solve per edge over
 /// the union of the two endpoints' neighborhoods, so dense hubs cost the
 /// most. Values carry the entropic smoothing bias of
-/// [`CurvatureConfig::reg`]; for rankings (which edges are most negative)
-/// the default is plenty.
+/// [`CurvatureConfig::reg`] and depend on the iteration cap. The function does
+/// not report convergence residuals; check sensitivity to both settings when
+/// using the values to rank edges.
 pub fn ollivier_ricci_curvatures(
     adj: &Array2<f64>,
     config: &CurvatureConfig,

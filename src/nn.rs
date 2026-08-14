@@ -259,9 +259,8 @@ impl<B: Backend> HGCNConv<B> {
 ///
 /// [`with_bases`](Self::with_bases) shares the relation transforms through
 /// a basis (their Eq. 3: `W_r = Σ_b a_rb V_b`), keeping parameters
-/// sublinear in the relation count; load-bearing for KGs with hundreds of
-/// relations. The paper's block-diagonal variant (Eq. 4) is not
-/// implemented.
+/// sublinear in the relation count. The paper's block-diagonal variant (Eq. 4)
+/// is not implemented.
 ///
 /// # Example
 ///
